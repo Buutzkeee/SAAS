@@ -2,6 +2,8 @@
 // PACIENTES MODULE
 // ===================================================
 const Pacientes = {
+  _editId: null,
+
   render() {
     const pacientes = getData('pacientes');
     return `
@@ -57,15 +59,15 @@ const Pacientes = {
       </div>
     </div>
 
-    <!-- Modal Cadastro -->
+    <!-- Modal Cadastro / Edição -->
     <div id="modal-paciente" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
       <div class="modal" style="max-width:780px;">
         <div class="modal-header">
-          <h3>👤 Cadastrar Paciente</h3>
+          <h3 id="modal-paciente-title">👤 Cadastrar Paciente</h3>
           <div class="modal-close" onclick="document.getElementById('modal-paciente').style.display='none'">✕</div>
         </div>
         <div class="modal-body">
-          <div class="alert info">📌 Todos os campos com * são obrigatórios</div>
+          <div class="alert info">📌 Campos marcados com * são obrigatórios para o prontuário eletrônico.</div>
           <div class="form-grid form-grid-2">
             <div class="form-group" style="grid-column:span 2">
               <label>Nome Completo *</label>
@@ -129,7 +131,7 @@ const Pacientes = {
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" onclick="document.getElementById('modal-paciente').style.display='none'">Cancelar</button>
-          <button class="btn btn-primary" onclick="Pacientes.salvar()">💾 Cadastrar</button>
+          <button class="btn btn-primary" onclick="Pacientes.salvar()">💾 Salvar Paciente</button>
         </div>
       </div>
     </div>
@@ -167,9 +169,10 @@ const Pacientes = {
         <td>${p.telefone||'—'}</td>
         <td>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn-secondary btn-xs" onclick="Pacientes.ver('${p.id}')">👁️</button>
-            <button class="btn btn-secondary btn-xs" onclick="navigate('historico',{pacId:'${p.id}'})">📋</button>
-            <button class="btn btn-danger btn-xs" onclick="Pacientes.deletar('${p.id}')">🗑️</button>
+            <button class="btn btn-secondary btn-xs" onclick="Pacientes.ver('${p.id}')" title="Ver Prontuário">👁️</button>
+            <button class="btn btn-secondary btn-xs" onclick="Pacientes.editar('${p.id}')" title="Editar Cadastro">✏️</button>
+            <button class="btn btn-secondary btn-xs" onclick="navigate('historico',{pacId:'${p.id}'})" title="Histórico Clínico">📋</button>
+            <button class="btn btn-danger btn-xs" onclick="Pacientes.deletar('${p.id}')" title="Excluir">🗑️</button>
           </div>
         </td>
       </tr>`;
@@ -191,29 +194,87 @@ const Pacientes = {
     document.getElementById('pacientes-tbody').innerHTML = this.renderRows(u?all.filter(p=>p.unidade===u):all);
   },
 
-  openModal() { document.getElementById('modal-paciente').style.display = 'flex'; },
+  openModal() {
+    this._editId = null;
+    const titleEl = document.getElementById('modal-paciente-title');
+    if (titleEl) titleEl.textContent = '👤 Cadastrar Paciente';
+    
+    document.getElementById('pac-nome').value = '';
+    document.getElementById('pac-cpf').value = '';
+    document.getElementById('pac-cns').value = '';
+    document.getElementById('pac-nascimento').value = '';
+    document.getElementById('pac-sexo').value = 'F';
+    document.getElementById('pac-telefone').value = '';
+    document.getElementById('pac-zona').value = 'Urbana';
+    document.getElementById('pac-endereco').value = '';
+    document.getElementById('pac-bairro').value = '';
+    document.getElementById('pac-unidade').value = 'UBSF Centro';
+    document.getElementById('pac-agente').value = 'ACS001';
+
+    document.getElementById('modal-paciente').style.display = 'flex';
+  },
+
+  editar(id) {
+    const p = getData('pacientes').find(x => x.id === id);
+    if (!p) return;
+
+    this._editId = id;
+    const titleEl = document.getElementById('modal-paciente-title');
+    if (titleEl) titleEl.textContent = '✏️ Editar Paciente — ' + p.nome;
+
+    document.getElementById('pac-nome').value = p.nome || '';
+    document.getElementById('pac-cpf').value = p.cpf || '';
+    document.getElementById('pac-cns').value = p.cns || '';
+    document.getElementById('pac-nascimento').value = p.dataNasc || '';
+    document.getElementById('pac-sexo').value = p.sexo || 'F';
+    document.getElementById('pac-telefone').value = p.telefone || '';
+    document.getElementById('pac-zona').value = p.zona || 'Urbana';
+    document.getElementById('pac-endereco').value = p.endereco || '';
+    document.getElementById('pac-bairro').value = p.bairro || '';
+    document.getElementById('pac-unidade').value = p.unidade || 'UBSF Centro';
+    document.getElementById('pac-agente').value = p.agente || 'ACS001';
+
+    document.getElementById('modal-paciente').style.display = 'flex';
+  },
 
   salvar() {
-    const nome = document.getElementById('pac-nome').value;
-    const cpf = document.getElementById('pac-cpf').value;
+    const nome = document.getElementById('pac-nome').value?.trim();
+    const cpf = document.getElementById('pac-cpf').value?.trim();
     const nasc = document.getElementById('pac-nascimento').value;
     const sexo = document.getElementById('pac-sexo').value;
-    if (!nome || !cpf || !nasc) { showToast('Preencha os campos obrigatórios!', 'error'); return; }
-    addItem('pacientes', {
-      id: generateId('P'),
-      nome, cpf,
-      cns: document.getElementById('pac-cns').value,
-      dataNasc: nasc, sexo,
-      telefone: document.getElementById('pac-telefone').value,
-      endereco: document.getElementById('pac-endereco').value,
-      bairro: document.getElementById('pac-bairro').value,
-      zona: document.getElementById('pac-zona').value,
-      unidade: document.getElementById('pac-unidade').value,
-      agente: document.getElementById('pac-agente').value,
-      foto: null,
-    });
+    if (!nome || !cpf || !nasc) {
+      showToast('Preencha os campos obrigatórios!', 'error');
+      return;
+    }
+
+    const payload = {
+      nome,
+      cpf,
+      cns: document.getElementById('pac-cns').value?.trim() || '',
+      dataNasc: nasc,
+      sexo,
+      telefone: document.getElementById('pac-telefone').value?.trim() || '',
+      endereco: document.getElementById('pac-endereco').value?.trim() || '',
+      bairro: document.getElementById('pac-bairro').value?.trim() || '',
+      zona: document.getElementById('pac-zona').value || 'Urbana',
+      unidade: document.getElementById('pac-unidade').value || 'UBSF Centro',
+      agente: document.getElementById('pac-agente').value || 'ACS001',
+    };
+
+    if (this._editId) {
+      updateItem('pacientes', this._editId, payload);
+      showToast('Paciente atualizado com sucesso!', 'success');
+      this._editId = null;
+    } else {
+      addItem('pacientes', {
+        id: generateId('P'),
+        ...payload,
+        foto: null
+      });
+      showToast('Paciente cadastrado com sucesso!', 'success');
+    }
+
     document.getElementById('modal-paciente').style.display = 'none';
-    showToast('Paciente cadastrado com sucesso!', 'success');
     document.getElementById('pacientes-tbody').innerHTML = this.renderRows(getData('pacientes'));
   },
 
@@ -251,170 +312,21 @@ const Pacientes = {
         <div class="stat-card"><div class="stat-value" style="font-size:24px">${exames.length}</div><div class="stat-label">Exames</div></div>
         <div class="stat-card"><div class="stat-value" style="font-size:24px">${agendamentos.length}</div><div class="stat-label">Agendamentos</div></div>
       </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button class="btn btn-secondary btn-sm" onclick="Pacientes.editar('${p.id}'); document.getElementById('modal-pac-detail').style.display='none';">✏️ Editar Dados</button>
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-pac-detail').style.display='none'; navigate('historico',{pacId:'${p.id}'})">📋 Abrir Prontuário</button>
+      </div>
     `;
     document.getElementById('modal-pac-detail').style.display = 'flex';
   },
 
   deletar(id) {
-    if (confirm('Remover este paciente? Esta ação não pode ser desfeita.')) {
+    showModal('Confirmar Exclusão', '<p>Deseja remover este paciente do cadastro municipal? Esta ação não pode ser desfeita.</p>', () => {
       deleteItem('pacientes', id);
+      closeModal();
       document.getElementById('pacientes-tbody').innerHTML = this.renderRows(getData('pacientes'));
-      showToast('Paciente removido.', 'info');
-    }
-  },
-
-  afterRender() {}
-};
-
-// ===================================================
-// PROFISSIONAIS MODULE
-// ===================================================
-const Profissionais = {
-  render() {
-    const profs = getData('profissionais');
-    return `
-    <div class="section-header">
-      <div>
-        <h2>Profissionais</h2>
-        <p>Equipe de saúde da família e agentes comunitários</p>
-      </div>
-      <button class="btn btn-primary" onclick="Profissionais.openModal()">+ Cadastrar Profissional</button>
-    </div>
-
-    <div class="grid-auto">
-      ${profs.map(p => `
-        <div class="card" style="border-color:${this.getColor(p.cargo)}">
-          <div class="card-body">
-            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-              <div style="width:50px;height:50px;background:linear-gradient(135deg,${this.getGrad(p.cargo)});border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;">${p.nome.split(' ').map(n=>n[0]).slice(0,2).join('')}</div>
-              <div>
-                <div style="font-size:14px;font-weight:700;color:var(--text-primary)">${p.nome}</div>
-                <div style="font-size:11.5px;color:var(--text-muted)">${p.especialidade||p.cargo}</div>
-              </div>
-            </div>
-            <div class="info-grid" style="grid-template-columns:1fr 1fr;gap:10px;">
-              <div class="info-item"><div class="info-label">Cargo</div><div class="info-value" style="font-size:12px">${p.cargo}</div></div>
-              <div class="info-item"><div class="info-label">Unidade</div><div class="info-value" style="font-size:12px">${p.unidade}</div></div>
-              ${p.crm?`<div class="info-item"><div class="info-label">CRM</div><div class="info-value" style="font-size:12px">${p.crm}</div></div>`:''}
-              ${p.coren?`<div class="info-item"><div class="info-label">COREN</div><div class="info-value" style="font-size:12px">${p.coren}</div></div>`:''}
-              <div class="info-item" style="grid-column:span 2"><div class="info-label">Telefone</div><div class="info-value" style="font-size:12px">${p.telefone||'—'}</div></div>
-            </div>
-            <div style="margin-top:14px;display:flex;gap:8px;">
-              <button class="btn btn-secondary btn-xs" style="flex:1" onclick="navigate('agendamento')">📅 Agenda</button>
-              <button class="btn btn-danger btn-xs" onclick="Profissionais.deletar('${p.id}')">🗑️</button>
-            </div>
-          </div>
-        </div>
-      `).join('')}
-      <div class="card" style="border-style:dashed;cursor:pointer;min-height:200px;display:flex;align-items:center;justify-content:center;" onclick="Profissionais.openModal()">
-        <div class="empty-state" style="padding:20px"><div class="icon">➕</div><h3>Novo Profissional</h3></div>
-      </div>
-    </div>
-
-    <!-- Modal -->
-    <div id="modal-prof" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>👨‍⚕️ Cadastrar Profissional</h3>
-          <div class="modal-close" onclick="document.getElementById('modal-prof').style.display='none'">✕</div>
-        </div>
-        <div class="modal-body">
-          <div class="form-grid form-grid-2">
-            <div class="form-group" style="grid-column:span 2">
-              <label>Nome Completo *</label>
-              <input type="text" id="prof-nome" placeholder="Nome do profissional com prefixo (Dr., Enf., etc.)">
-            </div>
-            <div class="form-group">
-              <label>Cargo *</label>
-              <select id="prof-cargo">
-                <option>Médico</option>
-                <option>Enfermeira</option>
-                <option>Técnico de Enfermagem</option>
-                <option>Agente Comunitário</option>
-                <option>Dentista</option>
-                <option>Psicólogo</option>
-                <option>Fisioterapeuta</option>
-                <option>Nutricionista</option>
-                <option>Assistente Social</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Especialidade</label>
-              <input type="text" id="prof-especialidade" placeholder="Ex: Clínica Geral, Saúde da Família">
-            </div>
-            <div class="form-group">
-              <label>CRM / Conselho Profissional</label>
-              <input type="text" id="prof-crm" placeholder="CRM-PB 00000 / COREN-PB 00000">
-            </div>
-            <div class="form-group">
-              <label>Unidade</label>
-              <select id="prof-unidade">
-                <option>UBSF Centro</option>
-                <option>UBSF Cohab</option>
-                <option>UBSF Rural</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>CPF *</label>
-              <input type="text" id="prof-cpf" placeholder="000.000.000-00">
-            </div>
-            <div class="form-group">
-              <label>Telefone</label>
-              <input type="text" id="prof-telefone" placeholder="(83) 99999-9999">
-            </div>
-            <div class="form-group" style="grid-column:span 2">
-              <label>E-mail</label>
-              <input type="email" id="prof-email" placeholder="profissional@saude.pb.gov.br">
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-secondary" onclick="document.getElementById('modal-prof').style.display='none'">Cancelar</button>
-          <button class="btn btn-primary" onclick="Profissionais.salvar()">💾 Cadastrar</button>
-        </div>
-      </div>
-    </div>
-    `;
-  },
-
-  getColor(cargo) {
-    const map = { 'Médico':'rgba(0,180,216,0.2)', 'Enfermeira':'rgba(6,214,160,0.2)', 'Agente Comunitário':'rgba(245,158,11,0.2)' };
-    return map[cargo]||'rgba(124,58,237,0.2)';
-  },
-  getGrad(cargo) {
-    const map = { 'Médico':'var(--primary),var(--primary-dark)', 'Enfermeira':'var(--secondary),#059669', 'Agente Comunitário':'#f59e0b,#d97706' };
-    return map[cargo]||'var(--accent),#6d28d9';
-  },
-
-  openModal() { document.getElementById('modal-prof').style.display = 'flex'; },
-
-  salvar() {
-    const nome = document.getElementById('prof-nome').value;
-    const cpf = document.getElementById('prof-cpf').value;
-    const cargo = document.getElementById('prof-cargo').value;
-    if (!nome || !cpf) { showToast('Preencha os campos obrigatórios!', 'error'); return; }
-    const crm = document.getElementById('prof-crm').value;
-    addItem('profissionais', {
-      id: generateId('PRO'),
-      nome, cpf, cargo,
-      especialidade: document.getElementById('prof-especialidade').value,
-      crm: cargo==='Médico'||cargo==='Dentista'?crm:'',
-      coren: cargo==='Enfermeira'||cargo==='Técnico de Enfermagem'?crm:'',
-      unidade: document.getElementById('prof-unidade').value,
-      telefone: document.getElementById('prof-telefone').value,
-      email: document.getElementById('prof-email').value,
+      showToast('Paciente removido com sucesso.', 'info');
     });
-    document.getElementById('modal-prof').style.display = 'none';
-    showToast('Profissional cadastrado!', 'success');
-    navigate('profissionais');
-  },
-
-  deletar(id) {
-    if (confirm('Remover este profissional?')) {
-      deleteItem('profissionais', id);
-      navigate('profissionais');
-      showToast('Removido.', 'info');
-    }
   },
 
   afterRender() {}

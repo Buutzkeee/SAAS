@@ -12,7 +12,10 @@ const Vacinacao = {
         <h2>Vacinação</h2>
         <p>Carteira de vacinação, doses aplicadas e campanhas</p>
       </div>
-      <button class="btn btn-primary" onclick="Vacinacao.openModal()">+ Registrar Dose</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="Vacinacao.novaCampanha()">📢 Nova Campanha</button>
+        <button class="btn btn-primary" onclick="Vacinacao.openModal()">+ Registrar Dose</button>
+      </div>
     </div>
 
     <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);">
@@ -62,34 +65,8 @@ const Vacinacao = {
     </div>
 
     <div id="tab-campanhas" class="tab-panel">
-      <div class="grid-auto">
-        ${campanhas.map(c => `
-          <div class="card">
-            <div class="card-header">
-              <h3>${c.nome}</h3>
-              <span class="badge ${c.status==='Em andamento'?'andamento':'encerrada'}">${c.status}</span>
-            </div>
-            <div class="card-body">
-              <div class="info-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-                <div class="info-item"><div class="info-label">Início</div><div class="info-value">${formatDate(c.inicio)}</div></div>
-                <div class="info-item"><div class="info-label">Fim</div><div class="info-value">${formatDate(c.fim)}</div></div>
-                <div class="info-item" style="grid-column:span 2"><div class="info-label">Público-alvo</div><div class="info-value">${c.publico}</div></div>
-              </div>
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
-                <span><strong style="color:var(--secondary)">${c.aplicadas}</strong> aplicadas</span>
-                <span>Meta: <strong style="color:var(--text-primary)">${c.meta}</strong></span>
-              </div>
-              <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,(c.aplicadas/c.meta*100)).toFixed(0)}%"></div></div>
-              <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:4px;">${(c.aplicadas/c.meta*100).toFixed(1)}% da meta</div>
-            </div>
-          </div>
-        `).join('')}
-        <div class="card" style="border-style:dashed;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:200px;" onclick="Vacinacao.novaCampanha()">
-          <div class="empty-state" style="padding:20px">
-            <div class="icon">➕</div>
-            <h3>Nova Campanha</h3>
-          </div>
-        </div>
+      <div class="grid-auto" id="campanhas-container">
+        ${this.renderCampanhasCards(campanhas)}
       </div>
     </div>
 
@@ -197,6 +174,83 @@ const Vacinacao = {
         </div>
       </div>
     </div>
+
+    <!-- Modal Nova Campanha -->
+    <div id="modal-campanha" class="modal-overlay" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>📢 Nova Campanha de Vacinação</h3>
+          <div class="modal-close" onclick="document.getElementById('modal-campanha').style.display='none'">✕</div>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid form-grid-2">
+            <div class="form-group" style="grid-column:span 2">
+              <label>Nome da Campanha *</label>
+              <input type="text" id="camp-nome" placeholder="Ex: Campanha Nacional de Vacinação contra a Gripe 2026">
+            </div>
+            <div class="form-group">
+              <label>Data de Início *</label>
+              <input type="date" id="camp-inicio" value="${new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="form-group">
+              <label>Data de Término *</label>
+              <input type="date" id="camp-fim">
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label>Público-Alvo *</label>
+              <input type="text" id="camp-publico" placeholder="Ex: Idosos 60+, gestantes, crianças de 6 meses a 5 anos">
+            </div>
+            <div class="form-group">
+              <label>Meta de Doses *</label>
+              <input type="number" id="camp-meta" placeholder="Ex: 500" value="500">
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="camp-status">
+                <option value="Em andamento">Em andamento</option>
+                <option value="Planejada">Planejada</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="document.getElementById('modal-campanha').style.display='none'">Cancelar</button>
+          <button class="btn btn-primary" onclick="Vacinacao.salvarCampanha()">📢 Criar Campanha</button>
+        </div>
+      </div>
+    </div>
+    `;
+  },
+
+  renderCampanhasCards(campanhas) {
+    return campanhas.map(c => `
+      <div class="card">
+        <div class="card-header">
+          <h3>${c.nome}</h3>
+          <span class="badge ${c.status==='Em andamento'?'andamento':(c.status==='Encerrada'?'encerrada':'aguardando')}">${c.status}</span>
+        </div>
+        <div class="card-body">
+          <div class="info-grid" style="grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <div class="info-item"><div class="info-label">Início</div><div class="info-value">${formatDate(c.inicio)}</div></div>
+            <div class="info-item"><div class="info-label">Fim</div><div class="info-value">${formatDate(c.fim)}</div></div>
+            <div class="info-item" style="grid-column:span 2"><div class="info-label">Público-alvo</div><div class="info-value">${c.publico}</div></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;">
+            <span><strong style="color:var(--secondary)">${c.aplicadas||0}</strong> aplicadas</span>
+            <span>Meta: <strong style="color:var(--text-primary)">${c.meta||0}</strong></span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100,((c.aplicadas||0)/(c.meta||1)*100)).toFixed(0)}%"></div></div>
+          <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-top:4px;">${((c.aplicadas||0)/(c.meta||1)*100).toFixed(1)}% da meta</div>
+        </div>
+      </div>
+    `).join('') + `
+      <div class="card" style="border-style:dashed;cursor:pointer;display:flex;align-items:center;justify-content:center;min-height:200px;" onclick="Vacinacao.novaCampanha()">
+        <div class="empty-state" style="padding:20px">
+          <div class="icon">➕</div>
+          <h3>Nova Campanha</h3>
+          <p style="font-size:12px;color:var(--text-muted)">Clique para criar uma campanha de vacinação</p>
+        </div>
+      </div>
     `;
   },
 
@@ -277,7 +331,40 @@ const Vacinacao = {
     document.getElementById('doses-tbody').innerHTML = this.renderDosesRows(getData('vacinas'));
   },
 
-  novaCampanha() { showToast('Funcionalidade em desenvolvimento!', 'info'); },
+  novaCampanha() {
+    const m = document.getElementById('modal-campanha');
+    if (m) m.style.display = 'flex';
+  },
+
+  salvarCampanha() {
+    const nome = document.getElementById('camp-nome')?.value?.trim();
+    const inicio = document.getElementById('camp-inicio')?.value;
+    const fim = document.getElementById('camp-fim')?.value;
+    const publico = document.getElementById('camp-publico')?.value?.trim();
+    const meta = Number(document.getElementById('camp-meta')?.value) || 100;
+    const status = document.getElementById('camp-status')?.value || 'Em andamento';
+
+    if (!nome || !inicio || !fim || !publico) {
+      showToast('Preencha todos os campos obrigatórios da campanha!', 'error');
+      return;
+    }
+
+    addItem('campanhas', {
+      id: generateId('CMP'),
+      nome, inicio, fim, publico, meta,
+      aplicadas: 0,
+      status
+    });
+
+    const m = document.getElementById('modal-campanha');
+    if (m) m.style.display = 'none';
+    showToast('Campanha de vacinação criada com sucesso!', 'success');
+    
+    const container = document.getElementById('campanhas-container');
+    if (container) {
+      container.innerHTML = this.renderCampanhasCards(getData('campanhas'));
+    }
+  },
 
   afterRender() {}
 };

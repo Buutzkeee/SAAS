@@ -7,7 +7,6 @@ const Visitas = {
     const pacientes = getData('pacientes');
     const hoje = new Date().toISOString().split('T')[0];
 
-    const getPac = id => pacientes.find(p => p.id === id) || {};
     const hoje_count = visitas.filter(v => v.data === hoje).length;
     const agendadas = visitas.filter(v => v.status === 'Agendada').length;
     const realizadas = visitas.filter(v => v.status === 'Realizada').length;
@@ -149,15 +148,30 @@ const Visitas = {
   },
 
   realizar(id) {
-    const obs = prompt('Observações da visita realizada (opcional):') || '';
-    const visitas = getData('visitas');
-    const idx = visitas.findIndex(v => v.id === id);
-    if (idx < 0) return;
-    visitas[idx].status = 'Realizada';
-    visitas[idx].observacao = obs;
-    setData('visitas', visitas);
-    showToast('Visita registrada como realizada!', 'success');
-    navigate('visitas');
+    const v = getData('visitas').find(x => x.id === id);
+    if (!v) return;
+    const pac = getData('pacientes').find(p => p.id === v.pacienteId) || {};
+    showModal('✅ Concluir Visita Domiciliar', `
+      <div style="margin-bottom:14px;">
+        <p style="font-size:13px;color:var(--text-secondary)">Confirmar a realização da visita para o paciente <strong>${pac.nome || v.pacienteId}</strong>?</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Observações / Evolução da Visita (opcional)</label>
+        <textarea class="form-control" id="visita-realizar-obs" rows="3" placeholder="Pressão arterial, orientações fornecidas, estado geral do paciente..."></textarea>
+      </div>
+    `, () => {
+      const obs = document.getElementById('visita-realizar-obs')?.value?.trim() || '';
+      const visitas = getData('visitas');
+      const idx = visitas.findIndex(x => x.id === id);
+      if (idx >= 0) {
+        visitas[idx].status = 'Realizada';
+        if (obs) visitas[idx].observacao = (visitas[idx].observacao ? visitas[idx].observacao + ' | ' : '') + obs;
+        setData('visitas', visitas);
+        closeModal();
+        showToast('Visita registrada como realizada com sucesso!', 'success');
+        navigate('visitas');
+      }
+    });
   },
 
   delete(id) {

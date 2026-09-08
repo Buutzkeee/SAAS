@@ -2,6 +2,8 @@
 // HISTÓRICO CLÍNICO MODULE
 // ===================================================
 const Historico = {
+  _currentPacId: null,
+
   render() {
     return `
     <div class="section-header">
@@ -15,18 +17,21 @@ const Historico = {
     <div class="action-row" style="margin-bottom:24px;">
       <div style="position:relative">
         <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text-muted)">🔍</span>
-        <select class="filter-select" style="padding-left:34px;min-width:280px;" onchange="Historico.loadPaciente(this.value)">
+        <select id="historico-pac-select" class="filter-select" style="padding-left:34px;min-width:280px;" onchange="Historico.loadPaciente(this.value)">
           <option value="">Selecione um paciente para ver o prontuário</option>
-          ${getData('pacientes').map(p=>`<option value="${p.id}">${p.nome} — CPF: ${p.cpf}</option>`).join('')}
+          ${getData('pacientes').map(p => `<option value="${p.id}">${p.nome} — CPF: ${p.cpf}</option>`).join('')}
         </select>
       </div>
       <div class="spacer"></div>
-      <select class="filter-select" onchange="Historico.filterTipo(this.value)">
+      <select id="historico-tipo-filter" class="filter-select" onchange="Historico.filterTipo(this.value)">
         <option value="">Todos os tipos</option>
         <option>Consulta</option>
+        <option>Retorno</option>
         <option>Pré-natal</option>
         <option>Urgência</option>
         <option>Preventivo</option>
+        <option>Odontológico</option>
+        <option>Saúde Mental</option>
       </select>
     </div>
 
@@ -53,13 +58,13 @@ const Historico = {
               <label>Paciente *</label>
               <select id="hc-paciente">
                 <option value="">Selecione...</option>
-                ${getData('pacientes').map(p=>`<option value="${p.id}">${p.nome}</option>`).join('')}
+                ${getData('pacientes').map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
               <label>Profissional *</label>
               <select id="hc-profissional">
-                ${getData('profissionais').map(p=>`<option value="${p.id}">${p.nome}</option>`).join('')}
+                ${getData('profissionais').map(p => `<option value="${p.id}">${p.nome}</option>`).join('')}
               </select>
             </div>
             <div class="form-group">
@@ -114,83 +119,95 @@ const Historico = {
   },
 
   loadPaciente(pacId) {
+    this._currentPacId = pacId || null;
     const banner = document.getElementById('paciente-banner');
     const container = document.getElementById('prontuario-container');
     if (!pacId) {
-      banner.style.display = 'none';
-      container.innerHTML = '<div class="empty-state" style="padding:60px"><div class="icon">📋</div><h3>Selecione um paciente</h3></div>';
+      if (banner) banner.style.display = 'none';
+      if (container) container.innerHTML = '<div class="empty-state" style="padding:60px"><div class="icon">📋</div><h3>Selecione um paciente</h3></div>';
       return;
     }
-    const pac = getData('pacientes').find(p=>p.id===pacId);
-    const historicos = getData('historico').filter(h=>h.pacienteId===pacId);
-    const vacinas = getData('vacinas').filter(v=>v.pacienteId===pacId);
-    const exames = getData('exames').filter(e=>e.pacienteId===pacId);
+
+    // Sync select if called programmatically
+    const sel = document.getElementById('historico-pac-select');
+    if (sel && sel.value !== pacId) sel.value = pacId;
+
+    const pac = getData('pacientes').find(p => p.id === pacId);
+    const tipoFilter = (document.getElementById('historico-tipo-filter') || {}).value || '';
+    let historicos = getData('historico').filter(h => h.pacienteId === pacId);
+    if (tipoFilter) historicos = historicos.filter(h => h.tipo === tipoFilter);
+    const vacinas = getData('vacinas').filter(v => v.pacienteId === pacId);
+    const exames = getData('exames').filter(e => e.pacienteId === pacId);
     const idade = pac ? calcIdade(pac.dataNasc) : 0;
 
-    banner.style.display = 'block';
-    banner.innerHTML = `
-      <div class="card" style="border-color:var(--primary-glow);">
-        <div class="card-body">
-          <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-            <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;">
-              ${pac?pac.nome[0]:'?'}
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:18px;font-weight:800;color:var(--text-primary)">${pac?pac.nome:'—'}</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:2px">CNS: ${pac?pac.cns:'—'} · CPF: ${pac?pac.cpf:'—'}</div>
-            </div>
-            <div class="info-grid" style="grid-template-columns:repeat(4,1fr);gap:16px;">
-              <div class="info-item"><div class="info-label">Idade</div><div class="info-value">${idade} anos</div></div>
-              <div class="info-item"><div class="info-label">Sexo</div><div class="info-value">${pac?pac.sexo==='F'?'Feminino':'Masculino':'—'}</div></div>
-              <div class="info-item"><div class="info-label">Unidade</div><div class="info-value">${pac?pac.unidade:'—'}</div></div>
-              <div class="info-item"><div class="info-label">Telefone</div><div class="info-value">${pac?pac.telefone:'—'}</div></div>
-            </div>
-            <div style="display:flex;gap:8px;flex-shrink:0;">
-              <span class="badge andamento">💉 ${vacinas.length} vacinas</span>
-              <span class="badge disponivel">🔬 ${exames.length} exames</span>
-              <span class="badge confirmado">📋 ${historicos.length} consultas</span>
+    if (banner) {
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <div class="card" style="border-color:var(--primary-glow);">
+          <div class="card-body">
+            <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+              <div style="width:56px;height:56px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#fff;flex-shrink:0;">
+                ${pac ? pac.nome[0] : '?'}
+              </div>
+              <div style="flex:1;">
+                <div style="font-size:18px;font-weight:800;color:var(--text-primary)">${pac ? pac.nome : '—'}</div>
+                <div style="font-size:13px;color:var(--text-muted);margin-top:2px">CNS: ${pac ? pac.cns || '—' : '—'} · CPF: ${pac ? pac.cpf : '—'}</div>
+              </div>
+              <div class="info-grid" style="grid-template-columns:repeat(4,1fr);gap:16px;">
+                <div class="info-item"><div class="info-label">Idade</div><div class="info-value">${idade} anos</div></div>
+                <div class="info-item"><div class="info-label">Sexo</div><div class="info-value">${pac ? (pac.sexo === 'F' ? 'Feminino' : 'Masculino') : '—'}</div></div>
+                <div class="info-item"><div class="info-label">Unidade</div><div class="info-value">${pac ? pac.unidade : '—'}</div></div>
+                <div class="info-item"><div class="info-label">Telefone</div><div class="info-value">${pac ? pac.telefone || '—' : '—'}</div></div>
+              </div>
+              <div style="display:flex;gap:8px;flex-shrink:0;">
+                <span class="badge andamento">💉 ${vacinas.length} vacinas</span>
+                <span class="badge disponivel">🔬 ${exames.length} exames</span>
+                <span class="badge confirmado">📋 ${getData('historico').filter(h=>h.pacienteId===pacId).length} consultas</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    `;
+      `;
+    }
 
     if (!historicos.length) {
-      container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="icon">📭</div><h3>Nenhum registro clínico</h3><p>Clique em "+ Novo Registro" para adicionar</p></div>';
+      if (container) container.innerHTML = '<div class="empty-state" style="padding:40px"><div class="icon">📭</div><h3>Nenhum registro clínico</h3><p>Clique em "+ Novo Registro" para adicionar</p></div>';
       return;
     }
 
-    container.innerHTML = `
-      <div class="timeline">
-        ${[...historicos].reverse().map(h => {
-          const pro = getData('profissionais').find(p=>p.id===h.profissionalId);
-          return `
-          <div class="timeline-item">
-            <div class="timeline-line">
-              <div class="timeline-dot"></div>
-              <div class="timeline-connector"></div>
-            </div>
-            <div class="timeline-content">
-              <div class="timeline-meta">
-                <span class="timeline-date">📅 ${formatDate(h.data)}</span>
-                <span class="timeline-type">${h.tipo}</span>
-                <span style="font-size:11px;color:var(--text-muted)">👨‍⚕️ ${pro?pro.nome:'—'}</span>
-                ${h.cid?`<span class="badge andamento">CID: ${h.cid}</span>`:''}
+    if (container) {
+      container.innerHTML = `
+        <div class="timeline">
+          ${[...historicos].reverse().map(h => {
+            const pro = getData('profissionais').find(p => p.id === h.profissionalId);
+            return `
+            <div class="timeline-item">
+              <div class="timeline-line">
+                <div class="timeline-dot"></div>
+                <div class="timeline-connector"></div>
               </div>
-              ${h.queixa?`<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Queixa:</span><div style="font-size:13.5px;color:var(--text-primary);margin-top:3px">${h.queixa}</div></div>`:''}
-              ${h.anamnese?`<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Anamnese:</span><div style="font-size:13px;color:var(--text-secondary);margin-top:3px;white-space:pre-line">${h.anamnese}</div></div>`:''}
-              ${h.diagnostico?`<div style="margin-bottom:10px;padding:10px;background:rgba(0,180,216,0.06);border-radius:8px;border-left:3px solid var(--primary)"><span style="font-size:11px;color:var(--primary);font-weight:700">DIAGNÓSTICO:</span><div style="font-size:13.5px;color:var(--text-primary);font-weight:600;margin-top:3px">${h.diagnostico}</div></div>`:''}
-              ${h.conduta?`<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Conduta:</span><div style="font-size:13px;color:var(--text-secondary);margin-top:3px;white-space:pre-line">${h.conduta}</div></div>`:''}
-              ${h.prescricao?`<div style="padding:10px;background:rgba(6,214,160,0.05);border-radius:8px;border-left:3px solid var(--secondary)"><span style="font-size:11px;color:var(--secondary);font-weight:700">💊 PRESCRIÇÃO:</span><pre style="font-family:'JetBrains Mono';font-size:12px;color:var(--text-secondary);margin-top:6px;white-space:pre-wrap">${h.prescricao}</pre></div>`:''}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    `;
+              <div class="timeline-content">
+                <div class="timeline-meta">
+                  <span class="timeline-date">📅 ${formatDate(h.data)}</span>
+                  <span class="timeline-type">${h.tipo}</span>
+                  <span style="font-size:11px;color:var(--text-muted)">👨‍⚕️ ${pro ? pro.nome : '—'}</span>
+                  ${h.cid ? `<span class="badge andamento">CID: ${h.cid}</span>` : ''}
+                </div>
+                ${h.queixa ? `<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Queixa:</span><div style="font-size:13.5px;color:var(--text-primary);margin-top:3px">${h.queixa}</div></div>` : ''}
+                ${h.anamnese ? `<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Anamnese:</span><div style="font-size:13px;color:var(--text-secondary);margin-top:3px;white-space:pre-line">${h.anamnese}</div></div>` : ''}
+                ${h.diagnostico ? `<div style="margin-bottom:10px;padding:10px;background:rgba(0,180,216,0.06);border-radius:8px;border-left:3px solid var(--primary)"><span style="font-size:11px;color:var(--primary);font-weight:700">DIAGNÓSTICO:</span><div style="font-size:13.5px;color:var(--text-primary);font-weight:600;margin-top:3px">${h.diagnostico}</div></div>` : ''}
+                ${h.conduta ? `<div style="margin-bottom:10px;"><span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Conduta:</span><div style="font-size:13px;color:var(--text-secondary);margin-top:3px;white-space:pre-line">${h.conduta}</div></div>` : ''}
+                ${h.prescricao ? `<div style="padding:10px;background:rgba(6,214,160,0.05);border-radius:8px;border-left:3px solid var(--secondary)"><span style="font-size:11px;color:var(--secondary);font-weight:700">💊 PRESCRIÇÃO:</span><pre style="font-family:'JetBrains Mono';font-size:12px;color:var(--text-secondary);margin-top:6px;white-space:pre-wrap">${h.prescricao}</pre></div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      `;
+    }
   },
 
   filterTipo(tipo) {
-    // reload with filter
+    if (this._currentPacId) this.loadPaciente(this._currentPacId);
   },
 
   openModal() { document.getElementById('modal-historico').style.display = 'flex'; },
@@ -215,6 +232,9 @@ const Historico = {
     });
     document.getElementById('modal-historico').style.display = 'none';
     showToast('Registro clínico salvo!', 'success');
+    // Auto-select this patient in view
+    const sel = document.getElementById('historico-pac-select');
+    if (sel) sel.value = pac;
     this.loadPaciente(pac);
   },
 
