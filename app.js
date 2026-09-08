@@ -72,7 +72,7 @@ function showModal(title, body, onConfirm) {
     m = document.createElement('div');
     m.id = 'generic-modal';
     m.className = 'modal-overlay';
-    m.onclick = (e) => { if(e.target===m) closeModal(); };
+    m.onclick = (e) => { if (e.target === m) closeModal(); };
     document.body.appendChild(m);
   }
   m.innerHTML = `
@@ -83,16 +83,21 @@ function showModal(title, body, onConfirm) {
       </div>
       <div class="modal-body">${body}</div>
       ${onConfirm ? `<div class="modal-footer">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button class="btn btn-primary" onclick="_modalCallback&&_modalCallback()">Confirmar</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+        <button type="button" class="btn btn-primary" onclick="_modalCallback&&_modalCallback()">Confirmar</button>
       </div>` : ''}
     </div>
   `;
-  m.style.display = 'flex';
+  m.classList.add('active');
+  m.style.cssText = 'display: flex !important;';
 }
+
 function closeModal() {
   const m = document.getElementById('generic-modal');
-  if (m) m.style.display = 'none';
+  if (m) {
+    m.classList.remove('active');
+    m.style.cssText = 'display: none !important;';
+  }
 }
 
 // ---- Tab switching ----

@@ -192,11 +192,12 @@ function showLoginScreen() {
                 <span class="btn-login-arrow">→</span>
               </button>
 
-              <div class="login-hint">
-                <div class="login-hint-box">
-                  <span style="opacity:0.6;font-size:11px">Acesso demo:</span>
-                  <code style="font-size:11px;color:var(--primary)">admin</code> /
-                  <code style="font-size:11px;color:var(--primary)">admin</code>
+              <div class="login-hint" style="margin-top:14px;">
+                <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;text-align:center;">Clique para preencher credenciais:</div>
+                <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('login-input').value='admin';document.getElementById('senha-input').value='admin';">👑 Admin</button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('login-input').value='medico';document.getElementById('senha-input').value='medico123';">🩺 Médico</button>
+                  <button type="button" class="btn btn-secondary btn-xs" onclick="document.getElementById('login-input').value='enfermeira';document.getElementById('senha-input').value='enf123';">💊 Enfermeira</button>
                 </div>
               </div>
             </form>
