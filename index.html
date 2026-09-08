@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistema de Gestão em Saúde (SaaS) — Prefeitura Municipal de Umbuzeiro/PB. Agendamento, vacinação, histórico clínico, exames, procedimentos, chat UBSF e visitas domiciliares.">
+  <meta name="keywords" content="saúde, gestão, SaaS, UBSF, agendamento, vacinação, prontuário eletrônico, Umbuzeiro, Paraíba">
+  <meta name="author" content="Prefeitura Municipal de Umbuzeiro - PB">
+  <meta name="robots" content="noindex, nofollow">
+  <title>SaúdeSaaS — Sistema de Gestão em Saúde · Umbuzeiro/PB</title>
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="SaúdeSaaS — Sistema de Gestão em Saúde Municipal">
+  <meta property="og:description" content="Plataforma completa de gestão em saúde pública com agendamento, vacinação, prontuário eletrônico e mais.">
+  <meta property="og:type" content="website">
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- App Root — Populated by app.js / auth.js -->
+  <div id="app">
+    <!-- Loading Screen -->
+    <div style="
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:100vh;
+      flex-direction:column;
+      gap:20px;
+      background:var(--bg-base);
+    ">
+      <div style="
+        width:64px;height:64px;
+        background:linear-gradient(135deg,#00b4d8,#7c3aed);
+        border-radius:16px;
+        display:flex;align-items:center;justify-content:center;
+        font-size:32px;
+        box-shadow:0 0 40px rgba(0,180,216,0.4);
+        animation:spin 2s linear infinite;
+      ">🏥</div>
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;color:#e2f0ff;margin-bottom:6px">SaúdeSaaS</div>
+        <div style="font-size:13px;color:#7ea8cc">Carregando sistema de gestão em saúde...</div>
+      </div>
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Scripts — Ordem importa! -->
+  <script src="data/seed.js"></script>
+  <!-- Auth deve vir antes de tudo -->
+  <script src="modules/auth.js"></script>
+  <!-- Módulos do sistema -->
+  <script src="modules/dashboard.js"></script>
+  <script src="modules/agendamento.js"></script>
+  <script src="modules/vacinacao.js"></script>
+  <script src="modules/historico.js"></script>
+  <script src="modules/exames.js"></script>
+  <script src="modules/chat.js"></script>
+  <script src="modules/pacientes.js"></script>
+  <script src="modules/visitas.js"></script>
+  <script src="modules/profissionais.js"></script>
+  <!-- App principal por último -->
+  <script src="app.js"></script>
+</body>
+</html>
